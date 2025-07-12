@@ -46,7 +46,7 @@ else:
         st.warning("You must provide consent to use the Thought Tagger. Thank you for considering.")
         st.stop()
 
-# --- Demographics Collection ---
+# --- Demographics Collection with Age Restriction ---
 if "demographics" not in st.session_state:
     with st.form("demographics_form", clear_on_submit=False):
         st.subheader("Tell us a bit about yourself (demographics)")
@@ -57,6 +57,9 @@ if "demographics" not in st.session_state:
         if submitted:
             if not (age and gender and profession.strip()):
                 st.error("Please enter your age, gender, and profession.")
+                st.stop()
+            if age < 18:
+                st.error("Sorry, you must be at least 18 years old to use this app.")
                 st.stop()
             st.session_state.demographics = {
                 "age": int(age),
@@ -75,10 +78,24 @@ st.write(
     "Let’s restore inner calm and boost your self-awareness!"
 )
 
-# --- Thought Tagging Section ---
+# --- Thought Tracking for 2 Weeks ---
 if "thought_data" not in st.session_state:
     st.session_state.thought_data = []
 
+if "start_date" not in st.session_state:
+    st.session_state.start_date = datetime.date.today()
+
+today = datetime.date.today()
+days_since_start = (today - st.session_state.start_date).days + 1
+days_required = 14
+
+st.info(f"🗓️ Day {min(days_since_start, days_required)} of your 14-day thought tagging journey!")
+if days_since_start < days_required:
+    st.info(f"Keep logging your thoughts daily for {days_required} days to build a powerful self-awareness habit! ({days_required - days_since_start} days to go)")
+else:
+    st.success("🎉 Congratulations! You've completed 14 days of thought tagging. Keep going for even deeper insights!")
+
+# --- Thought Tagging Section ---
 st.header("📝 Add a Thought and Tag It")
 with st.form("thought_form", clear_on_submit=True):
     thought = st.text_area("Enter your thought")
@@ -93,7 +110,8 @@ with st.form("thought_form", clear_on_submit=True):
             st.session_state.thought_data.append({
                 "thought": thought.strip(),
                 "tags": tag_list,
-                "time": timestamp
+                "time": timestamp,
+                "date": today.isoformat()
             })
             st.success("Thought tagged and saved!")
 
@@ -108,27 +126,30 @@ if st.session_state.thought_data:
     for entry in filtered:
         st.markdown(f"- **{entry['time']}**: {entry['thought']}  \n  _Tags: {', '.join(entry['tags'])}_")
 
+    # Show daily progress
+    unique_days = {entry["date"] for entry in st.session_state.thought_data}
+    st.info(f"📅 You've logged thoughts on {len(unique_days)} out of {days_required} days.")
+
     st.info("Tip: Use this log to spot recurring thought patterns and gain clarity over time.")
-# ...existing code...
 
-if __name__ == "__main__":
-    main()
-    print("\n💡 Want to share your experience or need support?")
-    print("📧 Reach out to us at loopbreakermd@gmail.com – we’d love to hear from you!")
+# --- Call to Action & Advertisement ---
+st.markdown("""
+---
+💡 **Want to share your experience or need support?**  
+📧 Reach out to us at [loopbreakermd@gmail.com](mailto:loopbreakermd@gmail.com) – we’d love to hear from you!
 
-    print("""
-=========================================
-🚀 Unlock Your Mind with LoopBreakerMD! 🚀
+---
+### 🚀 Unlock Your Mind with LoopBreakerMD! 🚀
 
-Are you ready to break free from mental clutter and gain true clarity?
-LoopBreakerMD offers innovative tools and expert guidance to help you:
+Are you ready to break free from mental clutter and gain true clarity?  
+**LoopBreakerMD** offers innovative tools and expert guidance to help you:
 - Tag and track your thoughts for deeper self-awareness
 - Identify patterns and triggers that shape your wellbeing
 - Build habits for a calmer, more focused mind
 
-Join a growing community dedicated to mental clarity and emotional growth.
+Join a growing community dedicated to mental clarity and emotional growth.  
 Take the first step—reach out today and discover how LoopBreakerMD can help you restore balance and thrive!
 
 🌐 loopbreakermd@gmail.com
-=========================================
+---
 """)
