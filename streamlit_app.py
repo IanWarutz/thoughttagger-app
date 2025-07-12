@@ -3,6 +3,7 @@ import pandas as pd
 import datetime
 import random
 import re
+from collections import Counter
 
 st.set_page_config(page_title="🏷️ Thought Tagger", page_icon="🏷️", layout="centered")
 st.title("🏷️ Thought Tagger – Build Emotional Clarity with Tags")
@@ -163,6 +164,20 @@ def assign_auto_tag(thought):
     # fallback: reflection
     return "reflection"
 
+# --- Pattern Detection Function ---
+def detect_recurring_patterns(thought_data, days=None):
+    # Filter by last N days if specified
+    if days is not None:
+        cutoff = (today - datetime.timedelta(days=days-1)).isoformat()
+        filtered = [entry for entry in thought_data if entry["date"] >= cutoff]
+    else:
+        filtered = thought_data
+    tag_counter = Counter(entry["auto_tag"] for entry in filtered)
+    if not tag_counter:
+        return None, {}
+    most_common_tag, count = tag_counter.most_common(1)[0]
+    return most_common_tag, tag_counter
+
 # --- Thought Tagging Section ---
 st.header("📝 Add a Thought and Tag It")
 with st.form("thought_form", clear_on_submit=True):
@@ -214,6 +229,43 @@ if st.session_state.thought_data:
     unique_days = {entry["date"] for entry in st.session_state.thought_data}
     st.info(f"📅 You've logged thoughts on {len(unique_days)} out of {days_required} days.")
     st.info("Tip: Use this log to spot recurring thought patterns and gain clarity over time.")
+
+    # --- Recurring Pattern Detection and Summaries ---
+    st.subheader("🔎 Recurring Pattern Detection")
+    most_common_tag, tag_counter = detect_recurring_patterns(st.session_state.thought_data)
+    if most_common_tag:
+        info = tag_info.get(most_common_tag, {"explanation": "", "tip": ""})
+        st.info(
+            f"**Overall Most Frequent Pattern:** **{most_common_tag}** ({tag_counter[most_common_tag]} times)\n\n"
+            f"_{info['explanation']}_\n\n"
+            f"**Medical Tip:** {info['tip']}"
+        )
+
+    st.subheader("📊 7-Day Summary")
+    tag7, counter7 = detect_recurring_patterns(st.session_state.thought_data, days=7)
+    if tag7:
+        info7 = tag_info.get(tag7, {"explanation": "", "tip": ""})
+        st.markdown(
+            f"**Most frequent tag in last 7 days:** **{tag7}** ({counter7[tag7]} times)\n\n"
+            f"_{info7['explanation']}_\n\n"
+            f"**Medical Tip:** {info7['tip']}"
+        )
+        st.markdown("**Tag counts (7 days):**")
+        for tag, count in counter7.most_common():
+            st.write(f"- {tag}: {count}")
+
+    st.subheader("📈 14-Day Summary")
+    tag14, counter14 = detect_recurring_patterns(st.session_state.thought_data, days=14)
+    if tag14:
+        info14 = tag_info.get(tag14, {"explanation": "", "tip": ""})
+        st.markdown(
+            f"**Most frequent tag in last 14 days:** **{tag14}** ({counter14[tag14]} times)\n\n"
+            f"_{info14['explanation']}_\n\n"
+            f"**Medical Tip:** {info14['tip']}"
+        )
+        st.markdown("**Tag counts (14 days):**")
+        for tag, count in counter14.most_common():
+            st.write(f"- {tag}: {count}")
 
 # --- Call to Action & Advertisement ---
 st.markdown("""
