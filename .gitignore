@@ -34,6 +34,10 @@ MANIFEST
 *.manifest
 *.spec
 
+#SECURITY
+.ownerpassword
+Governorelpun8
+
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
