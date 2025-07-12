@@ -2,94 +2,72 @@ import streamlit as st
 import pandas as pd
 import datetime
 import random
-import os
-
-# --- Optional: Google Sheets Integration ---
-# import gspread
-# from google.oauth2.service_account import Credentials
-
-# # Uncomment and configure if you want Google Sheets integration
-# SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-# CREDS = Credentials.from_service_account_file("YOUR_SERVICE_ACCOUNT.json", scopes=SCOPE)
-# SHEET_NAME = "ThoughtTaggerData"
-# gc = gspread.authorize(CREDS)
-# sh = gc.open(SHEET_NAME)
-# worksheet = sh.sheet1
+import re
 
 st.set_page_config(page_title="🏷️ Thought Tagger", page_icon="🏷️", layout="centered")
 st.title("🏷️ Thought Tagger – Build Emotional Clarity with Tags")
 
-# --- Tag explanations and suggestions ---
+# --- Tag definitions with medically approved tips ---
 tag_info = {
     "anxiety": {
-        "type": "negative",
-        "explanation": "This thought may reflect anxiety or worry.",
-        "tip": "Try deep breathing, journaling, or talking to someone you trust to manage anxious feelings."
-    },
-    "gratitude": {
-        "type": "positive",
-        "explanation": "This thought expresses gratitude or appreciation.",
-        "tip": "Keep noticing and celebrating the good things in your life to maintain this positive outlook!"
-    },
-    "goals": {
-        "type": "positive",
-        "explanation": "This thought is focused on your goals and ambitions.",
-        "tip": "Break big goals into small steps and celebrate your progress to keep up the momentum."
-    },
-    "self-doubt": {
-        "type": "negative",
-        "explanation": "This thought shows self-doubt or uncertainty.",
-        "tip": "Remind yourself of past successes and talk kindly to yourself to build confidence."
-    },
-    "joy": {
-        "type": "positive",
-        "explanation": "This thought radiates joy or excitement.",
-        "tip": "Share your joy with others and savor these moments to reinforce happiness."
-    },
-    "anger": {
-        "type": "negative",
-        "explanation": "This thought contains anger or frustration.",
-        "tip": "Pause, breathe, and consider healthy ways to express or release your anger."
+        "keywords": ["worry", "nervous", "anxious", "panic", "afraid", "scared", "fear", "uneasy", "apprehensive"],
+        "explanation": "This thought reflects anxiety or fear.",
+        "tip": "Try slow, deep breathing, grounding exercises, or progressive muscle relaxation. If anxiety persists, consider reaching out to a mental health professional."
     },
     "sadness": {
-        "type": "negative",
-        "explanation": "This thought reflects sadness or feeling down.",
-        "tip": "Reach out for support, practice self-care, and remember that it's okay to feel sad sometimes."
+        "keywords": ["sad", "down", "unhappy", "depressed", "cry", "hopeless", "tearful", "blue", "failure", "failed"],
+        "explanation": "This thought reflects sadness or low mood.",
+        "tip": "Acknowledge your feelings and talk to someone you trust. Engage in activities you usually enjoy, and seek professional support if sadness is persistent."
     },
-    "calm": {
-        "type": "positive",
-        "explanation": "This thought reflects calmness or peace.",
-        "tip": "Continue your calming routines and mindfulness practices to maintain this state."
+    "self-doubt": {
+        "keywords": ["doubt", "uncertain", "insecure", "not sure", "worthless", "inadequate", "failure", "can't", "useless"],
+        "explanation": "This thought reflects self-doubt or low self-esteem.",
+        "tip": "Challenge negative self-talk with evidence from your achievements. Practice self-compassion and consider cognitive behavioral strategies."
+    },
+    "anger": {
+        "keywords": ["angry", "mad", "furious", "annoyed", "rage", "irritated", "resentful"],
+        "explanation": "This thought reflects anger or frustration.",
+        "tip": "Pause and take deep breaths. Express your feelings assertively, not aggressively. Physical activity can help release tension."
     },
     "stress": {
-        "type": "negative",
-        "explanation": "This thought signals stress or overwhelm.",
-        "tip": "Take breaks, prioritize tasks, and practice relaxation techniques to reduce stress."
+        "keywords": ["stress", "overwhelmed", "pressure", "tense", "burnout", "exhausted"],
+        "explanation": "This thought reflects stress or overwhelm.",
+        "tip": "Prioritize tasks, take regular breaks, and practice relaxation techniques. If stress is chronic, seek support from a healthcare provider."
+    },
+    "gratitude": {
+        "keywords": ["thank", "grateful", "appreciate", "blessed", "fortunate"],
+        "explanation": "This thought expresses gratitude.",
+        "tip": "Keep a gratitude journal and regularly reflect on positive aspects of your life. Gratitude is linked to improved mental health."
+    },
+    "joy": {
+        "keywords": ["happy", "joy", "excited", "delight", "pleased", "content", "elated", "cheerful"],
+        "explanation": "This thought reflects happiness or joy.",
+        "tip": "Share your positive feelings with others and savor the moment. Positive emotions can boost resilience."
     },
     "love": {
-        "type": "positive",
-        "explanation": "This thought is about love, care, or affection.",
-        "tip": "Express your love and appreciation to others to strengthen your relationships."
+        "keywords": ["love", "affection", "care", "fond", "cherish", "adore"],
+        "explanation": "This thought is about love or connection.",
+        "tip": "Nurture your relationships and express appreciation to loved ones. Social support is vital for wellbeing."
+    },
+    "calm": {
+        "keywords": ["calm", "peace", "relaxed", "serene", "tranquil", "at ease"],
+        "explanation": "This thought reflects calmness or peace.",
+        "tip": "Maintain your relaxation routines, such as mindfulness or gentle exercise, to support ongoing wellbeing."
+    },
+    "goals": {
+        "keywords": ["goal", "plan", "future", "ambition", "dream", "aspire", "objective"],
+        "explanation": "This thought is focused on goals or aspirations.",
+        "tip": "Set realistic, achievable goals and break them into steps. Celebrate progress and adjust plans as needed."
     },
     "reflection": {
-        "type": "positive",
-        "explanation": "This thought shows self-reflection and awareness.",
-        "tip": "Keep reflecting on your experiences to grow and learn."
+        "keywords": ["reflect", "reflection", "insight", "aware", "awareness", "mindful", "mindfulness", "learned"],
+        "explanation": "This thought shows self-reflection or insight.",
+        "tip": "Regular self-reflection can foster growth. Journaling or talking with a counselor can deepen your insights."
     },
     "growth": {
-        "type": "positive",
+        "keywords": ["growth", "improve", "progress", "develop", "learn", "change", "better"],
         "explanation": "This thought is about personal growth.",
-        "tip": "Celebrate your progress and stay open to new learning opportunities."
-    },
-    "awareness": {
-        "type": "positive",
-        "explanation": "This thought demonstrates awareness and mindfulness.",
-        "tip": "Stay present and mindful to continue building self-awareness."
-    },
-    "mindfulness": {
-        "type": "positive",
-        "explanation": "This thought is rooted in mindfulness.",
-        "tip": "Practice mindfulness daily to maintain clarity and calm."
+        "tip": "Embrace challenges as opportunities to learn. Track your progress and seek feedback for continued development."
     }
 }
 
@@ -171,36 +149,19 @@ if days_since_start < days_required:
 else:
     st.success("🎉 Congratulations! You've completed 14 days of thought tagging. Keep going for even deeper insights!")
 
-# --- Automatic Tagging Logic (constant time/space) ---
-auto_tags = [
-    ("anxiety", ["worry", "nervous", "anxious", "panic", "afraid"]),
-    ("gratitude", ["thank", "grateful", "appreciate", "blessed"]),
-    ("goals", ["goal", "plan", "future", "ambition", "dream"]),
-    ("self-doubt", ["doubt", "uncertain", "insecure", "not sure"]),
-    ("joy", ["happy", "joy", "excited", "delight", "pleased"]),
-    ("anger", ["angry", "mad", "furious", "annoyed"]),
-    ("sadness", ["sad", "down", "unhappy", "depressed", "cry"]),
-    ("calm", ["calm", "peace", "relaxed", "serene"]),
-    ("stress", ["stress", "overwhelmed", "pressure", "tense"]),
-    ("love", ["love", "affection", "care", "fond"]),
-]
-
+# --- Improved Auto Tagging Logic ---
 def assign_auto_tag(thought):
     thought_lower = thought.lower()
-    for tag, keywords in auto_tags:
-        if any(word in thought_lower for word in keywords):
-            return tag
-    return random.choice(["reflection", "growth", "awareness", "mindfulness"])
-
-# --- Data Storage: Save to CSV (or Google Sheets if enabled above) ---
-CSV_FILE = "thought_logs.csv"
-
-def save_to_csv(entry):
-    df = pd.DataFrame([entry])
-    if not os.path.isfile(CSV_FILE):
-        df.to_csv(CSV_FILE, index=False)
-    else:
-        df.to_csv(CSV_FILE, mode='a', header=False, index=False)
+    tag_scores = {}
+    for tag, info in tag_info.items():
+        score = sum(1 for kw in info["keywords"] if re.search(r'\b' + re.escape(kw) + r'\b', thought_lower))
+        if score > 0:
+            tag_scores[tag] = score
+    if tag_scores:
+        # Return the tag with the highest keyword match count
+        return max(tag_scores, key=tag_scores.get)
+    # fallback: reflection
+    return "reflection"
 
 # --- Thought Tagging Section ---
 st.header("📝 Add a Thought and Tag It")
@@ -217,38 +178,37 @@ with st.form("thought_form", clear_on_submit=True):
             if auto_tag not in tag_list:
                 tag_list.append(auto_tag)
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-            entry = {
+            st.session_state.thought_data.append({
                 "thought": thought.strip(),
-                "tags": ", ".join(tag_list),
+                "tags": tag_list,
                 "auto_tag": auto_tag,
                 "time": timestamp,
                 "date": today.isoformat(),
                 "user": st.session_state.demographics['profession']
-            }
-            st.session_state.thought_data.append(entry)
-            save_to_csv(entry)
-            # # For Google Sheets, uncomment below:
-            # worksheet.append_row(list(entry.values()))
+            })
             info = tag_info.get(auto_tag, {"explanation": "No info.", "tip": ""})
-            st.success(f"Thought tagged and saved! (Auto-tag: **{auto_tag}**)\n\n"
-                       f"**Why this tag?** {info['explanation']}\n\n"
-                       f"**Tip:** {info['tip']}")
+            st.success(
+                f"Thought tagged and saved! (Auto-tag: **{auto_tag}**)\n\n"
+                f"**Why this tag?** {info['explanation']}\n\n"
+                f"**Medical Tip:** {info['tip']}"
+            )
 
 # --- Review Tagged Thoughts ---
 if st.session_state.thought_data:
     st.header("📂 Review Your Tagged Thoughts")
-    all_tags = sorted({tag for entry in st.session_state.thought_data for tag in entry["tags"].split(", ")})
+    all_tags = sorted({tag for entry in st.session_state.thought_data for tag in entry["tags"]})
     selected_tag = st.selectbox("Filter by tag", options=["All"] + all_tags)
     filtered = st.session_state.thought_data if selected_tag == "All" else [
-        entry for entry in st.session_state.thought_data if selected_tag in entry["tags"].split(", ")
+        entry for entry in st.session_state.thought_data if selected_tag in entry["tags"]
     ]
     for entry in filtered:
         info = tag_info.get(entry["auto_tag"], {"explanation": "", "tip": ""})
         st.markdown(
             f"- **{entry['time']}**: {entry['thought']}  \n"
-            f"  _Tags: {entry['tags']}_  \n"
+            f"  _Tags: {', '.join(entry['tags'])}_  \n"
             f"  _User: {entry['user']}_  \n"
-            f"  _Auto-tag: {entry['auto_tag']} – {info['explanation']} Tip: {info['tip']}_"
+            f"  _Auto-tag: {entry['auto_tag']} – {info['explanation']}  \n"
+            f"  _Medical Tip: {info['tip']}_"
         )
 
     unique_days = {entry["date"] for entry in st.session_state.thought_data}
@@ -276,6 +236,3 @@ Take the first step—reach out today and discover how LoopBreakerMD can help yo
 🌐 loopbreakermd@gmail.com
 ---
 """)
-
-# --- Data Storage Notes ---
-st.caption("🗂️ Your thoughts are saved locally in 'thought_logs.csv'. For cloud/Google Sheets integration, contact loopbreakermd@gmail.com.")
