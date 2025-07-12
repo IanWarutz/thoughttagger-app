@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import datetime
+import random
 
 st.set_page_config(page_title="🏷️ Thought Tagger", page_icon="🏷️", layout="centered")
 
@@ -95,25 +96,51 @@ if days_since_start < days_required:
 else:
     st.success("🎉 Congratulations! You've completed 14 days of thought tagging. Keep going for even deeper insights!")
 
+# --- Automatic Tagging Logic (constant time/space) ---
+auto_tags = [
+    ("anxiety", ["worry", "nervous", "anxious", "panic", "afraid"]),
+    ("gratitude", ["thank", "grateful", "appreciate", "blessed"]),
+    ("goals", ["goal", "plan", "future", "ambition", "dream"]),
+    ("self-doubt", ["doubt", "uncertain", "insecure", "not sure"]),
+    ("joy", ["happy", "joy", "excited", "delight", "pleased"]),
+    ("anger", ["angry", "mad", "furious", "annoyed"]),
+    ("sadness", ["sad", "down", "unhappy", "depressed", "cry"]),
+    ("calm", ["calm", "peace", "relaxed", "serene"]),
+    ("stress", ["stress", "overwhelmed", "pressure", "tense"]),
+    ("love", ["love", "affection", "care", "fond"]),
+]
+
+def assign_auto_tag(thought):
+    thought_lower = thought.lower()
+    for tag, keywords in auto_tags:
+        if any(word in thought_lower for word in keywords):
+            return tag
+    # fallback: random positive tag
+    return random.choice(["reflection", "growth", "awareness", "mindfulness"])
+
 # --- Thought Tagging Section ---
 st.header("📝 Add a Thought and Tag It")
 with st.form("thought_form", clear_on_submit=True):
     thought = st.text_area("Enter your thought")
-    tags = st.text_input("Enter tags for this thought (comma-separated, e.g., anxiety, gratitude, goals)")
+    tags = st.text_input("Enter tags for this thought (comma-separated, e.g., anxiety, gratitude, goals) [Optional]")
     submitted = st.form_submit_button("Add Thought")
     if submitted:
-        if not thought.strip() or not tags.strip():
-            st.error("Please enter both a thought and at least one tag.")
+        if not thought.strip():
+            st.error("Please enter a thought.")
         else:
             tag_list = [tag.strip().lower() for tag in tags.split(",") if tag.strip()]
+            auto_tag = assign_auto_tag(thought)
+            if auto_tag not in tag_list:
+                tag_list.append(auto_tag)
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
             st.session_state.thought_data.append({
                 "thought": thought.strip(),
                 "tags": tag_list,
                 "time": timestamp,
-                "date": today.isoformat()
+                "date": today.isoformat(),
+                "user": st.session_state.demographics['profession']  # simple user tracking
             })
-            st.success("Thought tagged and saved!")
+            st.success(f"Thought tagged and saved! (Auto-tag: **{auto_tag}**)")
 
 # --- Review Tagged Thoughts ---
 if st.session_state.thought_data:
@@ -124,7 +151,7 @@ if st.session_state.thought_data:
         entry for entry in st.session_state.thought_data if selected_tag in entry["tags"]
     ]
     for entry in filtered:
-        st.markdown(f"- **{entry['time']}**: {entry['thought']}  \n  _Tags: {', '.join(entry['tags'])}_")
+        st.markdown(f"- **{entry['time']}**: {entry['thought']}  \n  _Tags: {', '.join(entry['tags'])}_  \n  _User: {entry['user']}_")
 
     # Show daily progress
     unique_days = {entry["date"] for entry in st.session_state.thought_data}
